@@ -4,6 +4,8 @@ import json
 import math
 import numpy
 
+from solver import AStarSolver
+
 app = Flask(__name__)
 
 def create_action(action_type, target):
@@ -58,23 +60,13 @@ def backpack_is_full(player) :
 def is_tile_ok(tile) :
     return tile.Content == TileContent.Empty
 
-def go_to_tile_dumb(player, map, tile) :
-    diff_x = tile.X - player.Position.X
-    diff_y = tile.Y - player.Position.Y
-    target = player.Position
-    if (diff_x==0 and diff_y==0) :
-        return None
-    if (math.fabs(diff_x) > math.fabs(diff_y)) :
-        if diff_x < 0 :
-            target.X = target.X - 1
-        else :
-            target.X = target.X + 1
-    elif (math.fabs(diff_y) > math.fabs(diff_x)):
-        if diff_y < 0:
-            target.Y = target.Y - 1
-        else:
-            target.Y = target.Y + 1
-    return create_move_action(target)
+def go_to_tile(player, map, tile):
+    """ compute path and return next action to take in the path """
+    start = (player.Position.X, player.Position.Y)
+    goal = (tile.X, tile.Y)
+    path = list(AStarSolver(map).astar(start, goal))
+    action = create_move_action(Point(path[0][0], path[0][1]))
+    return action
 
 def is_resource(tile) :
     return tile.Content == TileContent.Resource
@@ -163,10 +155,10 @@ def bot():
             # find closest resource
             closest_resource = find_closest_resource_dumb(player, map)
             # go to resource
-            action = go_to_tile_dumb(player, deserialized_map, closest_resource)
+            action = go_to_tile(player, deserialized_map, closest_resource)
     elif backpack_is_full(player) :
         # Return to home
-        action = go_to_tile_dumb(player, deserialized_map, player.HouseLocation)
+        action = go_to_tile(player, deserialized_map, player.HouseLocation)
     elif can_collect_resource(player, deserialized_map) :
         # collect resource
         action = collect_resource(player)
@@ -174,7 +166,7 @@ def bot():
         # find closest resource
         closest_resource = find_closest_resource_dumb(player, map)
         # go to resource
-        action = go_to_tile_dumb(player, deserialized_map, closest_resource)
+        action = go_to_tile(player, deserialized_map, closest_resource)
 
     return action
 

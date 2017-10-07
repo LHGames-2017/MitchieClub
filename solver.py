@@ -5,7 +5,7 @@ import sys
 import math
 
 
-class Solver(AStar):
+class AStarSolver(AStar):
 
     def __init__(self, grid):
         self.grid = grid
@@ -56,7 +56,7 @@ if __name__ == "__main__":
     goal = (w - 2, h - 2)  # we want to reach the lower right corner
 
     # let's solve it
-    foundPath = list(Solver(grid).astar(start, goal))
+    foundPath = list(AStarSolver(grid).astar(start, goal))
 
     # print the solution
     if foundPath:
