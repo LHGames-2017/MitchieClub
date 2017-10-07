@@ -84,7 +84,9 @@ def bot():
             otherPlayers.append({player_name: player_info })
 
     # return decision
-    return create_move_action(Point(0,1))
+    mov_x = 0
+    mov_y = 1
+    return create_move_action(Point(x+mov_x,y+mov_y))
 
 @app.route("/", methods=["POST"])
 def reponse():
