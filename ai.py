@@ -153,8 +153,7 @@ def bot():
             otherPlayers.append({player_name: player_info })
 
 
-    action = create_move_action(Point(0,0)) # default
-    # return decision
+    action = create_move_action(Point(x,y)) # default
     if player.Position.Distance(player.HouseLocation) == 0 :
         # Try to upgrade collecting speed or carrying capacity
         upgrade_type = can_upgrade_dumb(player)
@@ -178,8 +177,6 @@ def bot():
         action = go_to_tile_dumb(player, deserialized_map, closest_resource)
 
     return action
-
-
 
 @app.route("/", methods=["POST"])
 def reponse():
