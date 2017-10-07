@@ -166,9 +166,8 @@ def bot():
 
             otherPlayers.append({player_name: player_info })
 
-
-    action = create_move_action(Point(0,0)) # default
-    # return decision
+-
+    action = create_move_action(Point(x,y)) # default
     if player.Position.Distance(player.HouseLocation) == 0 :
         # Try to upgrade collecting speed or carrying capacity
         if not has_try_upgrade :
