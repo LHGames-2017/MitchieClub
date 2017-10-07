@@ -10,6 +10,8 @@ app = Flask(__name__)
 upgrade_toggle = 1
 has_try_upgrade = 0
 global_grid = [[9 for y in range(500)] for x in range(500)]
+global_player_position = Point(0, 0)
+
 def print_grid(global_g):
     for i in range(15,30):
         for j in range(10,45):
@@ -166,6 +168,27 @@ def find_closest_resource_dumb(player, grid) :
                     target = grid[i][j]
     return target
 
+def cmp_distance_to_player(p1, p2):
+    distance1 = global_player_position.Distance(p1)
+    distance2 = global_player_position.Distance(p2)
+
+    return int(distance1-distance2)
+
+def find_closest_resources(player, grid, nb_resources):
+    list_resources = []
+    target = None
+    min_distance = 1000
+    for i in range(len(grid)):
+        for j in range(len(grid[0])):
+            if is_resource(grid[i][j]):
+                list_resources.append(grid[i][j])
+
+    #sort list according to distances
+    list_resources.sort(cmp_distance_to_player)
+    if list_resources.count() > nb_resources:
+        return list_resources[:nb_resources]
+    return list_resources
+
 def upgrade_dumb() :
     global upgrade_toggle
     if (upgrade_toggle) :
@@ -197,6 +220,7 @@ def bot():
     global upgrade_toggle
     global has_try_upgrade
     global global_grid
+    global global_player_position
     map_json = request.form["map"]
 
 
@@ -235,6 +259,8 @@ def bot():
     # update map
     global_grid = update_global_grid(deserialized_map, global_grid)
     print_grid(global_grid)
+
+    global_player_position = player.Position
     #print "X : ", x
     #print "Y : ", y
 
@@ -262,13 +288,21 @@ def bot():
         print('house_tile: {}'.format((house_tile.X, house_tile.Y)))
         action = go_to_tile(player, deserialized_map, house_tile)
     else:
-        # find closest resource
-        closest_resource = find_closest_resource_dumb(player, deserialized_map)
-        if can_collect_resource(player, closest_resource):
-            action = collect_resource(player, Point(closest_resource.X, closest_resource.Y))
-        else:
-            # go to resource
-            action = go_to_tile(player, deserialized_map, closest_resource)
+        # find closest resources
+        closest_resources = find_closest_resources(player, deserialized_map, 4)
+        has_collected = 0
+        for res in closest_resources:
+            if can_collect_resource(player, res) and not has_collected:
+                action = collect_resource(player, Point(res.X, res.Y))
+                has_collected = 1
+        if not has_collected:
+            found_path = 0
+            # go to closest resource
+            for res in closest_resources and not found_path:
+                if not found_path:
+                    action = go_to_tile(player, deserialized_map, res)
+                    if 1 #TODO check if action is OK
+                        found_path = 1
 
     print("Action: {}".format(action))
     return action
