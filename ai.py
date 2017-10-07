@@ -7,6 +7,8 @@ import numpy
 from solver import AStarSolver
 
 app = Flask(__name__)
+upgrade_toggle = 1
+has_try_upgrade = 0
 
 def create_action(action_type, target):
     actionContent = ActionContent(action_type, target.__dict__)
@@ -31,7 +33,8 @@ def create_purchase_action(item):
     return create_action("PurchaseAction", item)
 
 def create_upgrade_action(type):
-    return create_action("UpgradeAction", type)
+    actionContent = ActionContent("UpgradeAction", type)
+    return json.dumps(actionContent.__dict__)
 
 def deserialize_map(serialized_map):
     """
@@ -64,8 +67,29 @@ def go_to_tile(player, map, tile):
     """ compute path and return next action to take in the path """
     start = (player.Position.X, player.Position.Y)
     goal = (tile.X, tile.Y)
-    path = list(AStarSolver(map).astar(start, goal))
-    action = create_move_action(Point(path[0][0], path[0][1]))
+
+    if tile.Content != TileType.Tile:
+        # goal is 1 away from the tile
+        print('Goal is not empty, check surroundings')
+        min_d = 9999
+        goal = (player.Position.X, player.Position.Y)
+        for x, y in [(tile.X-1, tile.Y), (tile.X+1,tile.Y), (tile.X,tile.Y-1), (tile.X,tile.Y+1)]:
+            distance = player.Position.Distance(Point(tile.X, tile.Y))
+            if distance < min_d:
+                min_d = distance
+                goal = (x,y)
+
+    print('Start: {}'.format(start))
+    print('Goal: {}'.format(goal))
+    path = AStarSolver(map).astar(start, goal)
+    if path:
+        print('Found solution!')
+        point = Point(path()[0][0], path()[0][1])
+    else:
+        print('No solution :(')
+        point = Point(start[0], start[1])
+
+    action = create_move_action(point)
     return action
 
 def is_resource(tile) :
@@ -90,18 +114,24 @@ def find_closest_resource_dumb(player, map) :
     """
     target = None
     min_distance = 1000
-    for i in range(0, 20) :
-        for j in range(0,20) :
+    for i in range(len(map)) :
+        for j in range(len(map[0])) :
             if is_resource(map[i][j]):
                 distance = player.Position.Distance(Point(map[i][j].X, map[i][j].Y))
                 if(distance < min_distance) :
                     min_distance = distance
-                    target.X = map[i][j].X
-                    target.Y = map[i][j].Y
+                    target = map[i][j]
     return target
 
-def can_upgrade_dumb(player) :
-    lol = 1
+def upgrade_dumb() :
+    global upgrade_toggle
+    if (upgrade_toggle) :
+        upgrade_toggle = 0
+        return create_upgrade_action(UpgradeType.CarryingCapacity)
+    else :
+        upgrade_toggle = 1
+        return create_upgrade_action(UpgradeType.CollectingSpeed)
+
 
 def collect_resource(player, target):
     return create_collect_action(target)
@@ -109,10 +139,20 @@ def collect_resource(player, target):
 def can_collect_resource(player, target) :
     return player.Position.Distance(target) == 1
 
+def print_map(grid):
+    for i in range(len(grid)):
+        line = ""
+        for j in range(len(grid[0])):
+            line += " "
+            line += str(grid[i][j].Content) + "-(" + str(grid[i][j].X) + "," + str(grid[i][j].Y) + ")"
+        print(line)
+
 def bot():
     """
     Main de votre bot.
     """
+    global upgrade_toggle
+    global has_try_upgrade
     map_json = request.form["map"]
 
     # Player info
@@ -125,7 +165,7 @@ def bot():
     y = pos["Y"]
     house = p["HouseLocation"]
     player = Player(p["Health"], p["MaxHealth"], Point(x,y),
-                    Point(house["X"], house["Y"]),
+                    Point(house["X"], house["Y"]), 0,
                     p["CarriedResources"], p["CarryingCapacity"])
 
     # Map
@@ -146,29 +186,34 @@ def bot():
 
             otherPlayers.append({player_name: player_info })
 
+    print_map(deserialized_map)
 
     action = create_move_action(Point(x,y)) # default
     if player.Position.Distance(player.HouseLocation) == 0 :
         # Try to upgrade collecting speed or carrying capacity
-        upgrade_type = can_upgrade_dumb(player)
-        if upgrade_type is not None:
-            action = create_upgrade_action(upgrade_type)
+        if not has_try_upgrade :
+            action = upgrade_dumb()
+            has_try_upgrade = 1
         else :
             # find closest resource
-            closest_resource = find_closest_resource_dumb(player, map)
+            closest_resource = find_closest_resource_dumb(player, deserialized_map)
             # go to resource
             action = go_to_tile(player, deserialized_map, closest_resource)
+            has_try_upgrade = 0
     elif backpack_is_full(player) :
         # Return to home
         action = go_to_tile(player, deserialized_map, player.HouseLocation)
-    elif can_collect_resource(player, deserialized_map) :
+    #elif can_collect_resource(player, find_closest_resource_dumb(deserialized_map)):
         # collect resource
-        action = collect_resource(player)
-    else :
+    #    action = collect_resource(player)
+    else:
         # find closest resource
         closest_resource = find_closest_resource_dumb(player, map)
-        # go to resource
-        action = go_to_tile(player, deserialized_map, closest_resource)
+        if can_collect_resource(player, closest_resource):
+            action = collect_resource(player)
+        else:
+            # go to resource
+            action = go_to_tile(player, deserialized_map, closest_resource)
 
     return action
 
