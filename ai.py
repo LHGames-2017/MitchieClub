@@ -7,6 +7,7 @@ import numpy
 app = Flask(__name__)
 upgrade_toggle = 1
 has_try_upgrade = 0
+global_grid = [[9 for y in range(500)] for x in range(500)]
 
 def create_action(action_type, target):
     actionContent = ActionContent(action_type, target.__dict__)
@@ -54,6 +55,53 @@ def deserialize_map(serialized_map):
             deserialized_map[i][j] = Tile(content, x, y)
 
     return deserialized_map
+
+
+
+
+
+
+
+    target = Point(0,0)
+    min_distance = 1000
+    for i in range(0, 20) :
+        for j in range(0,20) :
+            if is_resource(map[i][j]):
+                distance = player.Position.Distance(Point(map[i][j].X, map[i][j].Y))
+                if(distance < min_distance) :
+                    min_distance = distance
+                    target.X = map[i][j].X
+                    target.Y = map[i][j].Y
+    return target
+
+def find_closest(global_g, type_content, player):
+    target = Tile()
+    min_distance = 1000
+    for i in range(500):
+        for j in range(500):
+            if global_g[i][j] == type_content:
+                distance = player.Position.Distance(Point(i, j))
+                if(distance < min_distance) :
+                    min_distance = distance
+                    target.X = i
+                    target.Y = j
+
+    return target
+
+def print_grid(global_g):
+    for i in range(15,30):
+        for j in range(10,45):
+            print global_g[i][j],
+        print
+    return None
+
+def update_global_grid(local_g, global_g):
+    x_diff = local_g[0][0].X
+    y_diff = local_g[0][0].Y
+    for i in range(20):
+        for j in range(20):
+            global_g[i + x_diff][j + y_diff] = local_g[i][j].Content
+    return global_g
 
 def backpack_is_full(player) :
     return (player.CarriedRessources >= player.CarryingCapacity)
@@ -133,6 +181,7 @@ def bot():
     """
     global upgrade_toggle
     global has_try_upgrade
+    global global_grid
     map_json = request.form["map"]
 
     # Player info
@@ -157,8 +206,6 @@ def bot():
     for player_dict in map_json["OtherPlayers"]:
         for player_name in player_dict.keys():
             player_info = player_dict[player_name]
-            if player_info == 'notAPlayer':
-                continue
             p_pos = player_info["Position"]
             player_info = PlayerInfo(player_info["Health"],
                                      player_info["MaxHealth"],
@@ -166,7 +213,17 @@ def bot():
 
             otherPlayers.append({player_name: player_info })
 
--
+    # update map
+    global_grid = update_global_grid(deserialized_map, global_grid)
+    print_grid(global_grid)
+    print "X : ", x
+    print "Y : ", y
+
+    fnd = find_closest(global_grid, TileContent.Resource, player)
+    print "Found res"
+    print "X : ",fnd.X
+    print "Y : ",fnd.Y
+
     action = create_move_action(Point(x,y)) # default
     if player.Position.Distance(player.HouseLocation) == 0 :
         # Try to upgrade collecting speed or carrying capacity
@@ -191,6 +248,7 @@ def bot():
         # go to resource
         action = go_to_tile_dumb(player, deserialized_map, closest_resource)
 
+    action = create_move_action(Point(x-1,y)) # default
     return action
 
 @app.route("/", methods=["POST"])

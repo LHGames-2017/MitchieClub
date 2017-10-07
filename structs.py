@@ -1,7 +1,7 @@
 import math
 
 class ActionTypes():
-    DefaultAction, MoveAction, AttackAction, CollectAction, UpgradeAction, StealAction, PurchaseAction = range(7)
+    DefaultAction, MoveAction, AttackAction, CollectAction, UpgradeAction, StealAction, PurchaseAction, HealAction = range(8)
 
 
 class UpgradeType():
@@ -14,6 +14,9 @@ class TileType():
 
 class TileContent():
     Empty, Wall, House, Lava, Resource, Shop, Player = range(7)
+
+class PurchasableItem():
+    MicrosoftSword, UbisoftShield, DevolutionBackpack, DevolutionPickaxe, HealthPotion = range(5)
 
 
 class Point(object):
