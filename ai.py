@@ -117,6 +117,7 @@ def go_to_tile(player, map, tile):
 
     goal = (to_rel(map, goal[0], goal[1]))
     path = AStarSolver(map).astar(start, goal)
+    action_type = "MoveAction"
     if path:
         #print('Found solution!')
         path = list(path)
@@ -124,15 +125,26 @@ def go_to_tile(player, map, tile):
         target = Point(x, y)
         #print('Last point', path[-1][0], path[-1][1])
     else:
-        #print('No solution :(')
-        x, y = to_abs(map, start[0], start[1])
-        target = Point(x, y)
+        print('No solution to tile, try with closest wall')
+        wall = find_closest(map, TileContent.Wall, player)
+        if player.Position.Distance(Point(wall.X, wall.Y)) == 1:
+            # start attacking
+            action_type = "AttackAction"
+        else:
+            # go to wall
+            goal = (to_rel(map, wall.X, wall.Y))
+            path = AStarSolver(map).astar(start, goal)
+            if path:
+                print('Found path to wall!')
+                path = list(path)
+                x, y = to_abs(map, path[1][0], path[1][1])
+                target = Point(x, y)
 
     #print('Start: {}'.format(start))
     #print('Goal: {}'.format(goal))
     #print('Point: {}'.format((point.X, point.Y)))
 
-    action = create_move_action(target)
+    action = create_action(action_type, target)
     return action
 
 def is_resource(tile) :
