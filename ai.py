@@ -1,6 +1,7 @@
 from flask import Flask, request
 from structs import *
 import json
+import math
 import numpy
 
 app = Flask(__name__)
@@ -27,6 +28,9 @@ def create_heal_action():
 def create_purchase_action(item):
     return create_action("PurchaseAction", item)
 
+def create_upgrade_action(type):
+    return create_action("UpgradeAction", type)
+
 def deserialize_map(serialized_map):
     """
     Fonction utilitaire pour comprendre la map
@@ -47,6 +51,71 @@ def deserialize_map(serialized_map):
             deserialized_map[i][j] = Tile(content, x, y)
 
     return deserialized_map
+
+def backpack_is_full(player) :
+    return (player.CarriedRessources >= player.CarryingCapacity)
+
+def is_tile_ok(tile) :
+    return tile.Content == TileContent.Empty
+
+def go_to_tile_dumb(player, map, tile) :
+    diff_x = tile.X - player.Position.X
+    diff_y = tile.Y - player.Position.Y
+    target = player.Position
+    if (diff_x==0 and diff_y==0) :
+        return None
+    if (math.fabs(diff_x) > math.fabs(diff_y)) :
+        if diff_x < 0 :
+            target.X = target.X - 1
+        else :
+            target.X = target.X + 1
+    elif (math.fabs(diff_y) > math.fabs(diff_x)):
+        if diff_y < 0:
+            target.Y = target.Y - 1
+        else:
+            target.Y = target.Y + 1
+    return create_move_action(target)
+
+def is_resource(tile) :
+    return tile.Content == TileContent.Resource
+
+def find_closest_resource_dumb(player, map) :
+    """
+    radius = 3
+    angle = 1
+    while not is_resource(map[target.X][target.Y]) :
+        step = angle % radius
+        cote = int(angle / radius)
+        if cote == 0 :
+            target = Point(player.Position+radius-2, )
+        elif cote == 1:
+
+        elif cote == 2:
+
+        elif cote == 3:
+
+        radius = radius + 1
+    """
+    target = None
+    min_distance = 1000
+    for i in range(0, 20) :
+        for j in range(0,20) :
+            if is_resource(map[i][j]):
+                distance = player.Position.Distance(Point(map[i][j].X, map[i][j].Y))
+                if(distance < min_distance) :
+                    min_distance = distance
+                    target.X = map[i][j].X
+                    target.Y = map[i][j].Y
+    return target
+
+def can_upgrade_dumb(player) :
+    lol = 1
+
+def collect_resource(player, target):
+    return create_collect_action(target)
+
+def can_collect_resource(player, target) :
+    return player.Position.Distance(target) == 1
 
 def bot():
     """
@@ -83,10 +152,31 @@ def bot():
 
             otherPlayers.append({player_name: player_info })
 
-    # return decision
-    mov_x = 0
-    mov_y = 1
-    return create_move_action(Point(x+mov_x,y+mov_y))
+
+    action = create_move_action(Point(x,y)) # default
+    if player.Position.Distance(player.HouseLocation) == 0 :
+        # Try to upgrade collecting speed or carrying capacity
+        upgrade_type = can_upgrade_dumb(player)
+        if upgrade_type is not None:
+            action = create_upgrade_action(upgrade_type)
+        else :
+            # find closest resource
+            closest_resource = find_closest_resource_dumb(player, map)
+            # go to resource
+            action = go_to_tile_dumb(player, deserialized_map, closest_resource)
+    elif backpack_is_full(player) :
+        # Return to home
+        action = go_to_tile_dumb(player, deserialized_map, player.HouseLocation)
+    elif can_collect_resource(player, deserialized_map) :
+        # collect resource
+        action = collect_resource(player)
+    else :
+        # find closest resource
+        closest_resource = find_closest_resource_dumb(player, map)
+        # go to resource
+        action = go_to_tile_dumb(player, deserialized_map, closest_resource)
+
+    return action
 
 @app.route("/", methods=["POST"])
 def reponse():
@@ -96,4 +186,4 @@ def reponse():
     return bot()
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=3000)
+    app.run(host="0.0.0.0", port=8080)
