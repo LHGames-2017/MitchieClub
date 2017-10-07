@@ -64,38 +64,23 @@ def is_tile_ok(tile) :
     return tile.Content == TileContent.Empty
 
 def go_to_tile(player, map, tile):
-    """ compute path and return next action to take in the path """
-    offsetx = map[0][0].X
-    offsety = map[0][0].Y
+    diff_x = tile.X - player.Position.X
+    diff_y = tile.Y - player.Position.Y
+    target = player.Position
+    if (diff_x == 0 and diff_y == 0):
+        return None
+    if (math.fabs(diff_x) > math.fabs(diff_y)):
+        if diff_x < 0:
+            target.X = target.X - 1
+        else:
+            target.X = target.X + 1
+    elif (math.fabs(diff_y) > math.fabs(diff_x)):
+        if diff_y < 0:
+            target.Y = target.Y - 1
+        else:
+            target.Y = target.Y + 1
 
-    start = (player.Position.X - offsetx, player.Position.Y - offsety)
-    goal = (tile.X, tile.Y)
-
-    if not tile.Content in [TileContent.Empty, TileContent.House]:
-        # goal is 1 away from the tile
-        min_d = 9999
-        goal = (player.Position.X, player.Position.Y)
-        for x, y in [(tile.X-1, tile.Y), (tile.X+1,tile.Y), (tile.X,tile.Y-1), (tile.X,tile.Y+1)]:
-            distance = player.Position.Distance(Point(tile.X, tile.Y))
-            if distance < min_d:
-                min_d = distance
-                goal = (x,y)
-
-    goal = (goal[0] - offsetx, goal[1] - offsety)
-    path = AStarSolver(map).astar(start, goal)
-    if path:
-        print('Found solution!')
-        path = list(path)
-        point = Point(path[1][0] + offsetx, path[1][1] + offsety)
-    else:
-        print('No solution :(')
-        point = Point(start[0] + offsetx, start[1] + offsety)
-
-    print('Start: {}'.format(start))
-    print('Goal: {}'.format(goal))
-    print('Point: {}'.format((point.X, point.Y)))
-
-    action = create_move_action(point)
+    action = create_move_action(target)
     return action
 
 def is_resource(tile) :
