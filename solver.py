@@ -31,37 +31,37 @@ class AStarSolver(AStar):
         return nb
 
 
-if __name__ == "__main__":
-    # create fake empty grid
-    types = [TileContent.Empty for i in range(8)]
-    for i in range(2):
-        types.append(TileContent.Wall)
-
-    def get_type():
-       from random import randint
-       return types[randint(0,9)]
-
-    grid = [[Tile(get_type(), i, j) for i in range(20)] for j in range(20)]
-
-    for i in range(20):
-        line = ""
-        for j in range(20):
-            line += " "
-            line += str(grid[i][j].Content)
-        print(line)
-
-    w = len(grid[0])
-    h = len(grid)
-
-    start = (1, 1)  # we choose to start at the upper left corner
-    goal = (w - 2, h - 2)  # we want to reach the lower right corner
-
-    # let's solve it
-    foundPath = list(AStarSolver(grid).astar(start, goal))
-
-    # print the solution
-    if foundPath:
-        print(list(foundPath))
-    else:
-        print('No solution')
+#if __name__ == "__main__":
+#    # create fake empty grid
+#    types = [TileContent.Empty for i in range(8)]
+#    for i in range(2):
+#        types.append(TileContent.Wall)
+#
+#    def get_type():
+#       from random import randint
+#       return types[randint(0,9)]
+#
+#    grid = [[Tile(get_type(), i, j) for i in range(20)] for j in range(20)]
+#
+#    for i in range(20):
+#        line = ""
+#        for j in range(20):
+#            line += " "
+#            line += str(grid[i][j].Content)
+#        print(line)
+#
+#    w = len(grid[0])
+#    h = len(grid)
+#
+#    start = (1, 1)  # we choose to start at the upper left corner
+#    goal = (w - 2, h - 2)  # we want to reach the lower right corner
+#
+#    # let's solve it
+#    foundPath = list(AStarSolver(grid).astar(start, goal))
+#
+#    # print the solution
+#    if foundPath:
+#        print(list(foundPath))
+#    else:
+#        print('No solution')
 
