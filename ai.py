@@ -63,37 +63,59 @@ def backpack_is_full(player) :
 def is_tile_ok(tile) :
     return tile.Content == TileContent.Empty
 
+def to_rel(grid, x, y):
+    offsetx = grid[0][0].X
+    offsety = grid[0][0].Y
+    xr = x - offsetx
+    yr = y - offsety
+    return xr, yr
+
+def to_abs(grid, xr, yr):
+    offsetx = grid[0][0].X
+    offsety = grid[0][0].Y
+    x = xr + offsetx
+    y = yr + offsety
+    return x, y
+
+def get_tile(grid, x, y):
+    xr, yr = to_rel(grid, x, y)
+    return grid[xr][yr]
+
 def go_to_tile(player, map, tile):
     """ compute path and return next action to take in the path """
-    offsetx = map[0][0].X
-    offsety = map[0][0].Y
-
-    start = (player.Position.X - offsetx, player.Position.Y - offsety)
+    start = (to_rel(map, player.Position.X, player.Position.Y))
     goal = (tile.X, tile.Y)
 
     if not tile.Content in [TileContent.Empty, TileContent.House]:
         # goal is 1 away from the tile
+        #print('Tile fuck you')
         min_d = 9999
         goal = (player.Position.X, player.Position.Y)
         for x, y in [(tile.X-1, tile.Y), (tile.X+1,tile.Y), (tile.X,tile.Y-1), (tile.X,tile.Y+1)]:
+            new_tile = get_tile(map, x, y)
+            if not new_tile.Content in [TileContent.Empty, TileContent.House]:
+                continue
             distance = player.Position.Distance(Point(tile.X, tile.Y))
             if distance < min_d:
                 min_d = distance
                 goal = (x,y)
 
-    goal = (goal[0] - offsetx, goal[1] - offsety)
+    goal = (to_rel(map, goal[0], goal[1]))
     path = AStarSolver(map).astar(start, goal)
     if path:
-        print('Found solution!')
+        #print('Found solution!')
         path = list(path)
-        point = Point(path[1][0] + offsetx, path[1][1] + offsety)
+        x, y = to_abs(map, path[1][0], path[1][1])
+        point = Point(x, y)
+        #print('Last point', path[-1][0], path[-1][1])
     else:
-        print('No solution :(')
-        point = Point(start[0] + offsetx, start[1] + offsety)
+        #print('No solution :(')
+        x, y = to_abs(map, start[0], start[1])
+        point = Point(x, y)
 
-    print('Start: {}'.format(start))
-    print('Goal: {}'.format(goal))
-    print('Point: {}'.format((point.X, point.Y)))
+    #print('Start: {}'.format(start))
+    #print('Goal: {}'.format(goal))
+    #print('Point: {}'.format((point.X, point.Y)))
 
     action = create_move_action(point)
     return action
@@ -192,7 +214,7 @@ def bot():
 
             otherPlayers.append({player_name: player_info })
 
-    print_map(deserialized_map)
+    #print_map(deserialized_map)
 
     action = create_move_action(Point(x,y)) # default
     if player.Position.Distance(player.HouseLocation) == 0 :
@@ -208,8 +230,8 @@ def bot():
             has_try_upgrade = 0
     elif backpack_is_full(player) :
         # Return to home
-        offsetx = deserialized_map[0][0].Y
-        offsety = deserialized_map[0][0].X
+        offsetx = deserialized_map[0][0].X
+        offsety = deserialized_map[0][0].Y
         print('offsetx: {}'.format(offsetx))
         print('offsety: {}'.format(offsety))
         print('house x: {}'.format(player.HouseLocation.X))

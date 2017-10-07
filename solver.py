@@ -27,8 +27,7 @@ class AStarSolver(AStar):
             nodes that can be reached (=any adjacent coordinate that is an empty tile)
         """
         x, y = node
-        nb = [(nx, ny) for nx, ny in [(x, y - 1), (x, y + 1), (x - 1, y), (x + 1, y)] if 0 <= nx < self.width and 0 <= ny < self.height and self.grid[nx][ny].Content == TileContent.Empty]
-        print('Neighbors: {}'.format(nb))
+        nb = [(nx, ny) for nx, ny in [(x, y - 1), (x, y + 1), (x - 1, y), (x + 1, y)] if 0 <= nx < self.width and 0 <= ny < self.height and self.grid[nx][ny].Content in [TileContent.Empty, TileContent.House]]
         return nb
 
 
