@@ -9,6 +9,21 @@ from solver import AStarSolver
 app = Flask(__name__)
 upgrade_toggle = 1
 has_try_upgrade = 0
+global_grid = [[9 for y in range(500)] for x in range(500)]
+def print_grid(global_g):
+    for i in range(15,30):
+        for j in range(10,45):
+            print global_g[i][j],
+        print
+    return None
+
+def update_global_grid(local_g, global_g):
+    x_diff = local_g[0][0].X
+    y_diff = local_g[0][0].Y
+    for i in range(20):
+        for j in range(20):
+            global_g[i + x_diff][j + y_diff] = local_g[i][j].Content
+    return global_g
 
 def create_action(action_type, target):
     actionContent = ActionContent(action_type, target.__dict__)
@@ -106,18 +121,18 @@ def go_to_tile(player, map, tile):
         #print('Found solution!')
         path = list(path)
         x, y = to_abs(map, path[1][0], path[1][1])
-        point = Point(x, y)
+        target = Point(x, y)
         #print('Last point', path[-1][0], path[-1][1])
     else:
         #print('No solution :(')
         x, y = to_abs(map, start[0], start[1])
-        point = Point(x, y)
+        target = Point(x, y)
 
     #print('Start: {}'.format(start))
     #print('Goal: {}'.format(goal))
     #print('Point: {}'.format((point.X, point.Y)))
 
-    action = create_move_action(point)
+    action = create_move_action(target)
     return action
 
 def is_resource(tile) :
@@ -181,7 +196,9 @@ def bot():
     """
     global upgrade_toggle
     global has_try_upgrade
+    global global_grid
     map_json = request.form["map"]
+
 
     # Player info
 
@@ -215,6 +232,11 @@ def bot():
             otherPlayers.append({player_name: player_info })
 
     #print_map(deserialized_map)
+    # update map
+    global_grid = update_global_grid(deserialized_map, global_grid)
+    print_grid(global_grid)
+    #print "X : ", x
+    #print "Y : ", y
 
     action = create_move_action(Point(x,y)) # default
     if player.Position.Distance(player.HouseLocation) == 0 :
@@ -239,9 +261,6 @@ def bot():
         house_tile = deserialized_map[player.HouseLocation.X-offsetx][player.HouseLocation.Y-offsety]
         print('house_tile: {}'.format((house_tile.X, house_tile.Y)))
         action = go_to_tile(player, deserialized_map, house_tile)
-    #elif can_collect_resource(player, find_closest_resource_dumb(deserialized_map)):
-        # collect resource
-    #    action = collect_resource(player)
     else:
         # find closest resource
         closest_resource = find_closest_resource_dumb(player, deserialized_map)
