@@ -40,7 +40,7 @@ def deserialize_map(serialized_map):
     serialized_map = serialized_map[1:]
     rows = serialized_map.split('[')
     column = rows[0].split('{')
-    deserialized_map = [[Tile() for x in range(40)] for y in range(40)]
+    deserialized_map = [[Tile() for x in range(20)] for y in range(20)]
     for i in range(len(rows) - 1):
         column = rows[i + 1].split('{')
 
@@ -137,6 +137,8 @@ def bot():
     for player_dict in map_json["OtherPlayers"]:
         for player_name in player_dict.keys():
             player_info = player_dict[player_name]
+            if player_info == 'notAPlayer':
+                continue
             p_pos = player_info["Position"]
             player_info = PlayerInfo(player_info["Health"],
                                      player_info["MaxHealth"],
