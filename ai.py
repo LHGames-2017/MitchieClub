@@ -142,7 +142,26 @@ def get_surrounding_tile(grid, player, tile):
             new_tile = other_tile
     return new_tile
 
-def go_to_tile(player, map, tile):
+def go_to_tile(player, grid, tile):
+    diff_x = tile.X - player.Position.X
+    diff_y = tile.Y - player.Position.Y
+    target = player.Position
+    if (diff_x==0 and diff_y==0):
+        return None
+    if (math.fabs(diff_x) > math.fabs(diff_y)):
+        if diff_x < 0 :
+            target.X = target.X - 1
+        else :
+            target.X = target.X + 1
+    elif (math.fabs(diff_y) > math.fabs(diff_x)):
+        if diff_y < 0:
+            target.Y = target.Y - 1
+        else:
+            target.Y = target.Y + 1
+            
+    return create_move_action(target)
+
+def go_to_tile_v1(player, map, tile):
     """ compute path and return next action to take in the path """
     start = (to_rel(map, player.Position.X, player.Position.Y))
     goal = (tile.X, tile.Y)
