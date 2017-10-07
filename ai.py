@@ -1,6 +1,7 @@
 from flask import Flask, request
 from structs import *
 import json
+import math
 import numpy
 
 app = Flask(__name__)
@@ -48,6 +49,30 @@ def deserialize_map(serialized_map):
 
     return deserialized_map
 
+def backpack_is_full(player) :
+    return (player.CarriedRessources >= player.CarryingCapacity)
+
+def is_tile_ok(tile) :
+    return tile.Content == TileContent.Empty
+
+def go_to_tile_dumb(player, map, tile) :
+    diff_x = tile.X - player.Position.X
+    diff_y = tile.Y - player.Position.Y
+    if (diff_x==0 and diff_y==0) :
+        return "ERREUR"
+    #if (math.fabs(diff_x) > math.fabs(diff_y)) :
+        #if diff_x < 0 :
+
+def find_closest_resource_dumb(player, map) :
+    lol = 1
+
+def upgrade_dumb(player) :
+    lol = 1
+
+def collect_resource(player):
+    lol = 1
+
+
 def bot():
     """
     Main de votre bot.
@@ -83,8 +108,25 @@ def bot():
 
             otherPlayers.append({player_name: player_info })
 
+    is_tile_ok(deserialized_map[0][0])
+
     # return decision
-    return create_move_action(Point(0,1))
+    if backpack_is_full(player) :
+        # Return to home
+        go_to_tile_dumb(player, deserialized_map, player.HouseLocation)
+    elif (true) :
+        # Try to upgrade collecting speed or carrying capacity
+        upgrade_dumb(player)
+    elif (true) :
+        # find closest resource
+        closest_resource = find_closest_resource_dumb(player, map)
+        # go to resource
+        go_to_tile_dumb(player, deserialized_map, closest_resource)
+    elif (true):
+        # collect resource
+        collect_resource(player)
+
+
 
 @app.route("/", methods=["POST"])
 def reponse():
@@ -95,3 +137,4 @@ def reponse():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=3000)
+    bot()
