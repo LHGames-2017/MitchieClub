@@ -34,9 +34,9 @@ class Point(object):
         return "{{{0}, {1}}}".format(self.X, self.Y)
 
     # Distance between two Points
-    def Distance(self, p1, p2):
-        delta_x = p1.X - p2.X
-        delta_y = p1.Y - p2.Y
+    def Distance(self, p1):
+        delta_x = p1.X - self.X
+        delta_y = p1.Y - self.Y
         return math.sqrt(math.pow(delta_x, 2) + math.pow(delta_y, 2))
 
 
@@ -81,4 +81,4 @@ class ActionContent(object):
 
     def __init__(self, action_name, content):
         self.ActionName = action_name
-        self.Content = content
+        self.Content = str(content)

@@ -5,6 +5,8 @@ import math
 import numpy
 
 app = Flask(__name__)
+upgrade_toggle = 1
+has_try_upgrade = 0
 
 def create_action(action_type, target):
     actionContent = ActionContent(action_type, target.__dict__)
@@ -29,7 +31,8 @@ def create_purchase_action(item):
     return create_action("PurchaseAction", item)
 
 def create_upgrade_action(type):
-    return create_action("UpgradeAction", type)
+    actionContent = ActionContent("UpgradeAction", type)
+    return json.dumps(actionContent.__dict__)
 
 def deserialize_map(serialized_map):
     """
@@ -38,7 +41,7 @@ def deserialize_map(serialized_map):
     serialized_map = serialized_map[1:]
     rows = serialized_map.split('[')
     column = rows[0].split('{')
-    deserialized_map = [[Tile() for x in range(40)] for y in range(40)]
+    deserialized_map = [[Tile() for x in range(20)] for y in range(20)]
     for i in range(len(rows) - 1):
         column = rows[i + 1].split('{')
 
@@ -96,7 +99,7 @@ def find_closest_resource_dumb(player, map) :
 
         radius = radius + 1
     """
-    target = None
+    target = Point(0,0)
     min_distance = 1000
     for i in range(0, 20) :
         for j in range(0,20) :
@@ -108,8 +111,15 @@ def find_closest_resource_dumb(player, map) :
                     target.Y = map[i][j].Y
     return target
 
-def can_upgrade_dumb(player) :
-    lol = 1
+def upgrade_dumb() :
+    global upgrade_toggle
+    if (upgrade_toggle) :
+        upgrade_toggle = 0
+        return create_upgrade_action(UpgradeType.CarryingCapacity)
+    else :
+        upgrade_toggle = 1
+        return create_upgrade_action(UpgradeType.CollectingSpeed)
+
 
 def collect_resource(player, target):
     return create_collect_action(target)
@@ -121,6 +131,8 @@ def bot():
     """
     Main de votre bot.
     """
+    global upgrade_toggle
+    global has_try_upgrade
     map_json = request.form["map"]
 
     # Player info
@@ -157,14 +169,15 @@ def bot():
     # return decision
     if player.Position.Distance(player.HouseLocation) == 0 :
         # Try to upgrade collecting speed or carrying capacity
-        upgrade_type = can_upgrade_dumb(player)
-        if upgrade_type is not None:
-            action = create_upgrade_action(upgrade_type)
+        if not has_try_upgrade :
+            action = upgrade_dumb()
+            has_try_upgrade = 1
         else :
             # find closest resource
-            closest_resource = find_closest_resource_dumb(player, map)
+            closest_resource = find_closest_resource_dumb(player, deserialized_map)
             # go to resource
             action = go_to_tile_dumb(player, deserialized_map, closest_resource)
+            has_try_upgrade = 0
     elif backpack_is_full(player) :
         # Return to home
         action = go_to_tile_dumb(player, deserialized_map, player.HouseLocation)
