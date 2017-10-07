@@ -49,7 +49,7 @@ class GameInfo(object):
         self.__dict__ = json_dict
         self.HouseLocation = Point(json_dict["HouseLocation"])
         self.Map = None
-        self.Players = dict()
+        self.OtherPlayers = dict()
 
 
 class Tile(object):

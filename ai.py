@@ -72,24 +72,6 @@ def deserialize_map(serialized_map):
 
     return deserialized_map
 
-
-
-
-
-
-
-    target = Point(0,0)
-    min_distance = 1000
-    for i in range(0, 20) :
-        for j in range(0,20) :
-            if is_resource(map[i][j]):
-                distance = player.Position.Distance(Point(map[i][j].X, map[i][j].Y))
-                if(distance < min_distance) :
-                    min_distance = distance
-                    target.X = map[i][j].X
-                    target.Y = map[i][j].Y
-    return target
-
 def find_closest(global_g, type_content, player):
     target = Tile()
     min_distance = 1000
@@ -143,24 +125,30 @@ def get_tile(grid, x, y):
     xr, yr = to_rel(grid, x, y)
     return grid[xr][yr]
 
+def get_surrounding_tile(grid, player, tile):
+    """ return the closest surrounding tile """
+    new_tile = tile
+    min_d = 9999
+    for x, y in [(tile.X-1, tile.Y), (tile.X+1,tile.Y), (tile.X,tile.Y-1), (tile.X,tile.Y+1)]:
+        other_tile = get_tile(grid, x, y)
+        if not other_tile.Content in [TileContent.Empty, TileContent.House]:
+            continue
+        distance = player.Position.Distance(Point(x, y))
+        if distance < min_d:
+            print('found min')
+            min_d = distance
+            new_tile = other_tile
+    return new_tile
+
 def go_to_tile(player, map, tile):
     """ compute path and return next action to take in the path """
     start = (to_rel(map, player.Position.X, player.Position.Y))
     goal = (tile.X, tile.Y)
 
     if not tile.Content in [TileContent.Empty, TileContent.House]:
-        # goal is 1 away from the tile
-        #print('Tile fuck you')
-        min_d = 9999
-        goal = (player.Position.X, player.Position.Y)
-        for x, y in [(tile.X-1, tile.Y), (tile.X+1,tile.Y), (tile.X,tile.Y-1), (tile.X,tile.Y+1)]:
-            new_tile = get_tile(map, x, y)
-            if not new_tile.Content in [TileContent.Empty, TileContent.House]:
-                continue
-            distance = player.Position.Distance(Point(tile.X, tile.Y))
-            if distance < min_d:
-                min_d = distance
-                goal = (x,y)
+        print('get surrounding tile')
+        new_tile = get_surrounding_tile(map, player, tile)
+        goal = (new_tile.X, new_tile.Y)
 
     goal = (to_rel(map, goal[0], goal[1]))
     path = AStarSolver(map).astar(start, goal)
@@ -173,23 +161,35 @@ def go_to_tile(player, map, tile):
         #print('Last point', path[-1][0], path[-1][1])
     else:
         print('No solution to tile, try with closest wall')
-        wall = find_closest(map, TileContent.Wall, player)
-        if player.Position.Distance(Point(wall.X, wall.Y)) == 1:
+        wall = find_closest(global_grid, TileContent.Wall, player)
+        if not wall:
+            print('no wall nearby')
+            target = player.Position
+        elif player.Position.Distance(Point(wall.X, wall.Y)) == 1:
             # start attacking
             action_type = "AttackAction"
+            target = Point(wall.X, wall.Y)
         else:
             # go to wall
-            goal = (to_rel(map, wall.X, wall.Y))
+            print('go to wall')
+            next_tile = get_surrounding_tile(map, player, wall)
+            goal = (to_rel(map, next_tile.X, next_tile.Y))
+            print('start: {}'.format(start))
+            print('goal: {}'.format(goal))
             path = AStarSolver(map).astar(start, goal)
             if path:
                 print('Found path to wall!')
                 path = list(path)
                 x, y = to_abs(map, path[1][0], path[1][1])
                 target = Point(x, y)
+            else:
+                print('no path to wall')
 
     #print('Start: {}'.format(start))
     #print('Goal: {}'.format(goal))
     #print('Point: {}'.format((point.X, point.Y)))
+
+    print("Type: {}".format(action_type))
 
     action = create_action(action_type, target)
     return action
@@ -281,6 +281,8 @@ def bot():
     for player_dict in map_json["OtherPlayers"]:
         for player_name in player_dict.keys():
             player_info = player_dict[player_name]
+            if player_info == "notAPlayer":
+                continue
             p_pos = player_info["Position"]
             player_info = PlayerInfo(player_info["Health"],
                                      player_info["MaxHealth"],
