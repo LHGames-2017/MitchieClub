@@ -4,10 +4,26 @@ import json
 import math
 import numpy
 
+from solver import AStarSolver
+
 app = Flask(__name__)
 upgrade_toggle = 1
 has_try_upgrade = 0
 global_grid = [[9 for y in range(500)] for x in range(500)]
+def print_grid(global_g):
+    for i in range(15,30):
+        for j in range(10,45):
+            print global_g[i][j],
+        print
+    return None
+
+def update_global_grid(local_g, global_g):
+    x_diff = local_g[0][0].X
+    y_diff = local_g[0][0].Y
+    for i in range(20):
+        for j in range(20):
+            global_g[i + x_diff][j + y_diff] = local_g[i][j].Content
+    return global_g
 
 def create_action(action_type, target):
     actionContent = ActionContent(action_type, target.__dict__)
@@ -109,28 +125,67 @@ def backpack_is_full(player) :
 def is_tile_ok(tile) :
     return tile.Content == TileContent.Empty
 
-def go_to_tile_dumb(player, map, tile) :
-    diff_x = tile.X - player.Position.X
-    diff_y = tile.Y - player.Position.Y
-    target = player.Position
-    if (diff_x==0 and diff_y==0) :
-        return None
-    if (math.fabs(diff_x) > math.fabs(diff_y)) :
-        if diff_x < 0 :
-            target.X = target.X - 1
-        else :
-            target.X = target.X + 1
-    elif (math.fabs(diff_y) > math.fabs(diff_x)):
-        if diff_y < 0:
-            target.Y = target.Y - 1
-        else:
-            target.Y = target.Y + 1
-    return create_move_action(target)
+def to_rel(grid, x, y):
+    offsetx = grid[0][0].X
+    offsety = grid[0][0].Y
+    xr = x - offsetx
+    yr = y - offsety
+    return xr, yr
+
+def to_abs(grid, xr, yr):
+    offsetx = grid[0][0].X
+    offsety = grid[0][0].Y
+    x = xr + offsetx
+    y = yr + offsety
+    return x, y
+
+def get_tile(grid, x, y):
+    xr, yr = to_rel(grid, x, y)
+    return grid[xr][yr]
+
+def go_to_tile(player, map, tile):
+    """ compute path and return next action to take in the path """
+    start = (to_rel(map, player.Position.X, player.Position.Y))
+    goal = (tile.X, tile.Y)
+
+    if not tile.Content in [TileContent.Empty, TileContent.House]:
+        # goal is 1 away from the tile
+        #print('Tile fuck you')
+        min_d = 9999
+        goal = (player.Position.X, player.Position.Y)
+        for x, y in [(tile.X-1, tile.Y), (tile.X+1,tile.Y), (tile.X,tile.Y-1), (tile.X,tile.Y+1)]:
+            new_tile = get_tile(map, x, y)
+            if not new_tile.Content in [TileContent.Empty, TileContent.House]:
+                continue
+            distance = player.Position.Distance(Point(tile.X, tile.Y))
+            if distance < min_d:
+                min_d = distance
+                goal = (x,y)
+
+    goal = (to_rel(map, goal[0], goal[1]))
+    path = AStarSolver(map).astar(start, goal)
+    if path:
+        #print('Found solution!')
+        path = list(path)
+        x, y = to_abs(map, path[1][0], path[1][1])
+        target = Point(x, y)
+        #print('Last point', path[-1][0], path[-1][1])
+    else:
+        #print('No solution :(')
+        x, y = to_abs(map, start[0], start[1])
+        target = Point(x, y)
+
+    #print('Start: {}'.format(start))
+    #print('Goal: {}'.format(goal))
+    #print('Point: {}'.format((point.X, point.Y)))
+
+    action = create_move_action(target)
+    return action
 
 def is_resource(tile) :
     return tile.Content == TileContent.Resource
 
-def find_closest_resource_dumb(player, map) :
+def find_closest_resource_dumb(player, grid) :
     """
     radius = 3
     angle = 1
@@ -147,16 +202,15 @@ def find_closest_resource_dumb(player, map) :
 
         radius = radius + 1
     """
-    target = Point(0,0)
+    target = None
     min_distance = 1000
-    for i in range(0, 20) :
-        for j in range(0,20) :
-            if is_resource(map[i][j]):
-                distance = player.Position.Distance(Point(map[i][j].X, map[i][j].Y))
+    for i in range(len(grid)):
+        for j in range(len(grid[0])) :
+            if is_resource(grid[i][j]):
+                distance = player.Position.Distance(Point(grid[i][j].X, grid[i][j].Y))
                 if(distance < min_distance) :
                     min_distance = distance
-                    target.X = map[i][j].X
-                    target.Y = map[i][j].Y
+                    target = grid[i][j]
     return target
 
 def upgrade_dumb() :
@@ -175,6 +229,14 @@ def collect_resource(player, target):
 def can_collect_resource(player, target) :
     return player.Position.Distance(target) == 1
 
+def print_map(grid):
+    for i in range(len(grid)):
+        line = ""
+        for j in range(len(grid[0])):
+            line += " "
+            line += str(grid[i][j].Content) + "-(" + str(grid[i][j].X) + "," + str(grid[i][j].Y) + ")"
+        print(line)
+
 def bot():
     """
     Main de votre bot.
@@ -183,6 +245,7 @@ def bot():
     global has_try_upgrade
     global global_grid
     map_json = request.form["map"]
+
 
     # Player info
 
@@ -194,7 +257,7 @@ def bot():
     y = pos["Y"]
     house = p["HouseLocation"]
     player = Player(p["Health"], p["MaxHealth"], Point(x,y),
-                    Point(house["X"], house["Y"]),
+                    Point(house["X"], house["Y"]), 0,
                     p["CarriedResources"], p["CarryingCapacity"])
 
     # Map
@@ -223,6 +286,7 @@ def bot():
     print "Found res"
     print "X : ",fnd.X
     print "Y : ",fnd.Y
+    #print_map(deserialized_map)
 
     action = create_move_action(Point(x,y)) # default
     if player.Position.Distance(player.HouseLocation) == 0 :
@@ -234,21 +298,29 @@ def bot():
             # find closest resource
             closest_resource = find_closest_resource_dumb(player, deserialized_map)
             # go to resource
-            action = go_to_tile_dumb(player, deserialized_map, closest_resource)
+            action = go_to_tile(player, deserialized_map, closest_resource)
             has_try_upgrade = 0
     elif backpack_is_full(player) :
         # Return to home
-        action = go_to_tile_dumb(player, deserialized_map, player.HouseLocation)
-    elif can_collect_resource(player, deserialized_map) :
-        # collect resource
-        action = collect_resource(player)
-    else :
+        offsetx = deserialized_map[0][0].X
+        offsety = deserialized_map[0][0].Y
+        print('offsetx: {}'.format(offsetx))
+        print('offsety: {}'.format(offsety))
+        print('house x: {}'.format(player.HouseLocation.X))
+        print('house y: {}'.format(player.HouseLocation.Y))
+        house_tile = deserialized_map[player.HouseLocation.X-offsetx][player.HouseLocation.Y-offsety]
+        print('house_tile: {}'.format((house_tile.X, house_tile.Y)))
+        action = go_to_tile(player, deserialized_map, house_tile)
+    else:
         # find closest resource
-        closest_resource = find_closest_resource_dumb(player, map)
-        # go to resource
-        action = go_to_tile_dumb(player, deserialized_map, closest_resource)
+        closest_resource = find_closest_resource_dumb(player, deserialized_map)
+        if can_collect_resource(player, closest_resource):
+            action = collect_resource(player, Point(closest_resource.X, closest_resource.Y))
+        else:
+            # go to resource
+            action = go_to_tile(player, deserialized_map, closest_resource)
 
-    action = create_move_action(Point(x-1,y)) # default
+    print("Action: {}".format(action))
     return action
 
 @app.route("/", methods=["POST"])
