@@ -249,6 +249,7 @@ def print_map(grid):
             line += str(grid[i][j].Content) + "-(" + str(grid[i][j].X) + "," + str(grid[i][j].Y) + ")"
         print(line)
 
+last_move = False
 def bot():
     """
     Main de votre bot.
@@ -273,67 +274,70 @@ def bot():
                     p["CarriedResources"], p["CarryingCapacity"])
 
     # Map
-    serialized_map = map_json["CustomSerializedMap"]
-    deserialized_map = deserialize_map(serialized_map)
+    #serialized_map = map_json["CustomSerializedMap"]
+    #deserialized_map = deserialize_map(serialized_map)
 
-    otherPlayers = []
+    #otherPlayers = []
 
-    for player_dict in map_json["OtherPlayers"]:
-        for player_name in player_dict.keys():
-            player_info = player_dict[player_name]
-            if player_info == "notAPlayer":
-                continue
-            p_pos = player_info["Position"]
-            player_info = PlayerInfo(player_info["Health"],
-                                     player_info["MaxHealth"],
-                                     Point(p_pos["X"], p_pos["Y"]))
+    #for player_dict in map_json["OtherPlayers"]:
+    #    for player_name in player_dict.keys():
+    #        player_info = player_dict[player_name]
+    #        if player_info == "notAPlayer":
+    #            continue
+    #        p_pos = player_info["Position"]
+    #        player_info = PlayerInfo(player_info["Health"],
+    #                                 player_info["MaxHealth"],
+    #                                 Point(p_pos["X"], p_pos["Y"]))
 
-            otherPlayers.append({player_name: player_info })
+    #        otherPlayers.append({player_name: player_info })
 
-    # update map
-    global_grid = update_global_grid(deserialized_map, global_grid)
-    print_grid(global_grid)
-    print "X : ", x
-    print "Y : ", y
+    ## update map
+    #global_grid = update_global_grid(deserialized_map, global_grid)
+    #print_grid(global_grid)
+    #print "X : ", x
+    #print "Y : ", y
 
-    fnd = find_closest(global_grid, TileContent.Resource, player)
-    print "Found res"
-    print "X : ",fnd.X
-    print "Y : ",fnd.Y
-    #print_map(deserialized_map)
+    #fnd = find_closest(global_grid, TileContent.Resource, player)
+    #print "Found res"
+    #print "X : ",fnd.X
+    #print "Y : ",fnd.Y
+    ##print_map(deserialized_map)
 
-    action = create_move_action(Point(x,y)) # default
-    if player.Position.Distance(player.HouseLocation) == 0 :
-        # Try to upgrade collecting speed or carrying capacity
-        if not has_try_upgrade :
-            action = upgrade_dumb()
-            has_try_upgrade = 1
-        else :
-            # find closest resource
-            closest_resource = find_closest_resource_dumb(player, deserialized_map)
-            # go to resource
-            action = go_to_tile(player, deserialized_map, closest_resource)
-            has_try_upgrade = 0
-    elif backpack_is_full(player) :
-        # Return to home
-        offsetx = deserialized_map[0][0].X
-        offsety = deserialized_map[0][0].Y
-        print('offsetx: {}'.format(offsetx))
-        print('offsety: {}'.format(offsety))
-        print('house x: {}'.format(player.HouseLocation.X))
-        print('house y: {}'.format(player.HouseLocation.Y))
-        house_tile = deserialized_map[player.HouseLocation.X-offsetx][player.HouseLocation.Y-offsety]
-        print('house_tile: {}'.format((house_tile.X, house_tile.Y)))
-        action = go_to_tile(player, deserialized_map, house_tile)
-    else:
-        # find closest resource
-        closest_resource = find_closest_resource_dumb(player, deserialized_map)
-        if can_collect_resource(player, closest_resource):
-            action = collect_resource(player, Point(closest_resource.X, closest_resource.Y))
-        else:
-            # go to resource
-            action = go_to_tile(player, deserialized_map, closest_resource)
-
+    #action = create_move_action(Point(x,y)) # default
+    #if player.Position.Distance(player.HouseLocation) == 0 :
+    #    # Try to upgrade collecting speed or carrying capacity
+    #    if not has_try_upgrade :
+    #        action = upgrade_dumb()
+    #        has_try_upgrade = 1
+    #    else :
+    #        # find closest resource
+    #        closest_resource = find_closest_resource_dumb(player, deserialized_map)
+    #        # go to resource
+    #        action = go_to_tile(player, deserialized_map, closest_resource)
+    #        has_try_upgrade = 0
+    #elif backpack_is_full(player) :
+    #    # Return to home
+    #    offsetx = deserialized_map[0][0].X
+    #    offsety = deserialized_map[0][0].Y
+    #    print('offsetx: {}'.format(offsetx))
+    #    print('offsety: {}'.format(offsety))
+    #    print('house x: {}'.format(player.HouseLocation.X))
+    #    print('house y: {}'.format(player.HouseLocation.Y))
+    #    house_tile = deserialized_map[player.HouseLocation.X-offsetx][player.HouseLocation.Y-offsety]
+    #    print('house_tile: {}'.format((house_tile.X, house_tile.Y)))
+    #    action = go_to_tile(player, deserialized_map, house_tile)
+    #else:
+    #    # find closest resource
+    #    closest_resource = find_closest_resource_dumb(player, deserialized_map)
+    #    if can_collect_resource(player, closest_resource):
+    #        action = collect_resource(player, Point(closest_resource.X, closest_resource.Y))
+    #    else:
+    #        # go to resource
+    #        action = go_to_tile(player, deserialized_map, closest_resource)
+    global last_move
+    direction = Point(0,1) if last_move else Point(0,-1)
+    last_move = not last_move
+    action = create_move_action(player.Position + direction)
     print("Action: {}".format(action))
     return action
 
@@ -345,4 +349,4 @@ def reponse():
     return bot()
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=3000)
+    app.run(host="0.0.0.0", port=8080)
