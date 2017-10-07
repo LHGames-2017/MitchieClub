@@ -1,6 +1,6 @@
 
 from astar import AStar
-from structs import Tile, TileType
+from structs import Tile, TileContent
 import sys
 import math
 
@@ -27,14 +27,16 @@ class AStarSolver(AStar):
             nodes that can be reached (=any adjacent coordinate that is an empty tile)
         """
         x, y = node
-        return[(nx, ny) for nx, ny in [(x, y - 1), (x, y + 1), (x - 1, y), (x + 1, y)] if 0 <= nx < self.width and 0 <= ny < self.height and grid[nx][ny].Content == TileType.Tile]
+        nb = [(nx, ny) for nx, ny in [(x, y - 1), (x, y + 1), (x - 1, y), (x + 1, y)] if 0 <= nx < self.width and 0 <= ny < self.height and self.grid[nx][ny].Content == TileContent.Empty]
+        print('Neighbors: {}'.format(nb))
+        return nb
 
 
 if __name__ == "__main__":
     # create fake empty grid
-    types = [TileType.Tile for i in range(8)]
+    types = [TileContent.Empty for i in range(8)]
     for i in range(2):
-        types.append(TileType.Wall)
+        types.append(TileContent.Wall)
 
     def get_type():
        from random import randint
