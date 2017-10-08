@@ -142,7 +142,7 @@ def get_surrounding_tile(grid, player, tile):
             new_tile = other_tile
     return new_tile
 
-def go_to_tile(player, grid, tile):
+def go_to_tile_v1(player, grid, tile):
     diff_x = tile.X - player.Position.X
     diff_y = tile.Y - player.Position.Y
     target = player.Position
@@ -161,12 +161,16 @@ def go_to_tile(player, grid, tile):
             
     return create_move_action(target)
 
-def go_to_tile_v1(player, map, tile):
-    """ compute path and return next action to take in the path """
+def go_to_tile(player, map, tile):
+    """ compute shortest path using A* 
+    if no path is found, try again with shortest wall and destroy it
+    return next action to take in the path
+    """
     start = (to_rel(map, player.Position.X, player.Position.Y))
     goal = (tile.X, tile.Y)
 
     if not tile.Content in [TileContent.Empty, TileContent.House]:
+        # if the tile we want to reach is not an empty tile, try to reach one around it
         #print('get surrounding tile')
         new_tile = get_surrounding_tile(map, player, tile)
         goal = (new_tile.X, new_tile.Y)
@@ -175,42 +179,30 @@ def go_to_tile_v1(player, map, tile):
     path = AStarSolver(map).astar(start, goal)
     action_type = "MoveAction"
     if path:
-        ##print('Found solution!')
+        # A* found a solution!
         path = list(path)
         x, y = to_abs(map, path[1][0], path[1][1])
         target = Point(x, y)
-        ##print('Last point', path[-1][0], path[-1][1])
     else:
-        #print('No solution to tile, try with closest wall')
+        # could not reach tile, try with closest wall
         wall = find_closest(global_grid, TileContent.Wall, player)
         if not wall:
-            #print('no wall nearby')
+            # could not find wall
             target = player.Position
         elif player.Position.Distance(Point(wall.X, wall.Y)) == 1:
-            # start attacking
+            # try to destroy wall
             action_type = "AttackAction"
             target = Point(wall.X, wall.Y)
         else:
-            # go to wall
-            #print('go to wall')
+            # try A* again to wall
             next_tile = get_surrounding_tile(map, player, wall)
             goal = (to_rel(map, next_tile.X, next_tile.Y))
-            #print('start: {}'.format(start))
-            #print('goal: {}'.format(goal))
             path = AStarSolver(map).astar(start, goal)
             if path:
-                #print('Found path to wall!')
+                # found path to wall
                 path = list(path)
                 x, y = to_abs(map, path[1][0], path[1][1])
                 target = Point(x, y)
-            #else:
-                #print('no path to wall')
-
-    ##print('Start: {}'.format(start))
-    ##print('Goal: {}'.format(goal))
-    ##print('Point: {}'.format((point.X, point.Y)))
-
-    #print("Type: {}".format(action_type))
 
     action = create_action(action_type, target)
     return action
@@ -268,7 +260,6 @@ def print_map(grid):
         for j in range(len(grid[0])):
             line += " "
             line += str(grid[i][j].Content) + "-(" + str(grid[i][j].X) + "," + str(grid[i][j].Y) + ")"
-        #print(line)
 
 last_move = False
 def bot():
@@ -280,9 +271,7 @@ def bot():
     global global_grid
     map_json = request.form["map"]
 
-
     # Player info
-
     encoded_map = map_json.encode()
     map_json = json.loads(encoded_map)
     p = map_json["Player"]
@@ -315,14 +304,8 @@ def bot():
     # update map
     global_grid = update_global_grid(deserialized_map, global_grid)
     print_grid(global_grid)
-    #print "X : ", x
-    #print "Y : ", y
 
     fnd = find_closest(global_grid, TileContent.Resource, player)
-    #print "Found res"
-    #print "X : ",fnd.X
-    #print "Y : ",fnd.Y
-    #print_map(deserialized_map)
 
     action = create_move_action(Point(x,y)) # default
     if player.Position.Distance(player.HouseLocation) == 0 :
@@ -340,12 +323,7 @@ def bot():
         # Return to home
         offsetx = deserialized_map[0][0].X
         offsety = deserialized_map[0][0].Y
-        #print('offsetx: {}'.format(offsetx))
-        #print('offsety: {}'.format(offsety))
-        #print('house x: {}'.format(player.HouseLocation.X))
-        #print('house y: {}'.format(player.HouseLocation.Y))
         house_tile = deserialized_map[player.HouseLocation.X-offsetx][player.HouseLocation.Y-offsety]
-        #print('house_tile: {}'.format((house_tile.X, house_tile.Y)))
         action = go_to_tile(player, deserialized_map, house_tile)
     else:
         # find closest resource
@@ -356,11 +334,7 @@ def bot():
             # go to resource
             action = go_to_tile(player, deserialized_map, closest_resource)
 
-    #global last_move
-    #direction = Point(0,1) if last_move else Point(0,-1)
-    #last_move = not last_move
-    #action = create_move_action(player.Position + direction)
-    #print("Action: {}".format(action))
+    print("Action: {}".format(action))
     return action
 
 @app.route("/", methods=["POST"])
